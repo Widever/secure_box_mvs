@@ -1,7 +1,8 @@
-#include "SecureBox.h"
+#include "SecureBox.hpp"
 #include <thread>
 #include <functional>
 #include <mutex>
+#include <cmath>
 
 bool OpenBox(SecureBox& box)
 {
@@ -45,11 +46,13 @@ bool OpenBox(SecureBox& box)
     return box.isLocked();
 }
 
+//checking configurations of different sizes for a random matrix
 bool testOpenBox() {
-    std::vector<std::pair<std::pair<int, int>, int>> matrixSizes;
-    int N = 20;
-    for (int i = 1; i <= N; i++) {
-        for (int j = 1; j <= N; j++) {
+    int N = 100; //max matrix size
+    int step = 20;
+    std::vector<std::pair<std::pair<int, int>, bool>> matrixSizes;
+    for (int i = 1; i <= N; i+=step) {
+        for (int j = 1; j <= N; j+=step) {
 
             matrixSizes.push_back({ {i,j},0 });
 
@@ -60,31 +63,30 @@ bool testOpenBox() {
     int progress = 0;
     bool fail = false;
 
-    std::function<void()> handlePoint = [&mtx, &matrixSizes, &progress, &fail]() {
-        
-        for (auto &item : matrixSizes) {
+    std::function<void()> handlePoint = [&mtx, &matrixSizes, &progress, &fail, &N]() {
+
+        for (auto& item : matrixSizes) {
             if (fail)return;
-            
+            std::lock_guard<std::mutex> lock(mtx);
             if (!item.second) {
-                std::lock_guard<std::mutex> lock(mtx);
                 SecureBox box(item.first.first, item.first.second);
                 OpenBox(box);
                 if (box.isLocked()) {
                     std::cout << "fail\n";
                     fail = true;
-                    return ;
+                    return;
                 }
                 item.second = true;
                 progress++;
-                if(progress%100==0)
-                    std::cout << progress / 100<<"%\n";
+                if (progress % (int)pow(matrixSizes.size(), 0.5) == 0)
+                    std::cout << (double)progress * 100 / matrixSizes.size() << "%\n";
             }
         }
     };
 
     std::vector<std::thread> threads;
     int threadsCount = std::thread::hardware_concurrency();
-    std::cout << "threads count " << threadsCount<<'\n';
+    std::cout << "threads count " << threadsCount << '\n';
     for (int i = 0; i < threadsCount; i++) {
         std::thread thr(handlePoint);
         threads.emplace_back(std::move(thr));
@@ -94,7 +96,7 @@ bool testOpenBox() {
         thr.join();
     }
 
-    return fail;
+    return !fail;
 }
 
 int main() {
