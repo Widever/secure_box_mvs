@@ -41,12 +41,14 @@ public:
         for (uint32_t x = 0; x < m_xSize; x++) {
             for (uint32_t y = 0; y < m_ySize; y++) {
                 locked = locked || m_LockSwitchers[x][y];
+                /*dont need lookup m_LockSitchers after finding 'true' element*/
             }
         }
         return locked;
     }
 
     bool flip(uint32_t x, uint32_t y)
+        //can use short type of data (matrix size between 0 and 100 (max value 32,767)) 
     {
         if (x >= m_xSize || y >= m_ySize)
             return false;
@@ -55,6 +57,7 @@ public:
         for (uint32_t ty = 0; ty < m_ySize; ty++)
             m_LockSwitchers[x][ty] = !m_LockSwitchers[x][ty];
         m_LockSwitchers[x][y] = !m_LockSwitchers[x][y];
+        
         return true;
     }
 
@@ -65,6 +68,7 @@ public:
 
         for (uint32_t iter = minNumOfIters + (rnd() % addNumOfIters); iter != 0; iter--)
             flip(rnd() & m_xSize, rnd() % m_ySize);
+        // function can return unlocked matrix. need to check is matrix open 
     }
 
     std::vector<std::vector<bool>> getState() {
@@ -76,9 +80,11 @@ public:
     }
 
     SecureBox(uint32_t x, uint32_t y) : m_xSize(x), m_ySize(y), rnd(time(0))
+        //Set not entire class members in initializer list 
     {
         m_LockSwitchers.resize(x);
         for (uint32_t i = 0; i < x; i++)
+            //crush when x or y =0 
             m_LockSwitchers[i].resize(y);
         lock();
     }
